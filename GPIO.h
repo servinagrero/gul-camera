@@ -27,4 +27,4 @@ class GPIOClass
         string gpionum; //Gpio number used for the constructor
 };
 
-#endif
+#endif // GPIO_H
