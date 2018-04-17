@@ -1,5 +1,7 @@
 #include <iostream>
-#include <sstream>
+#include <string>
+#include <ctime>
+//#include <chrono>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -50,7 +52,16 @@ int main() {
 
     Size frameSize(static_cast<int>(dWidth), static_cast<int>(dHeight));
 
-    VideoWriter oVideoWriter("grabacion.avi", CV_FOURCC('P','I','M','1'), 30, frameSize, true);
+    // Name of the file to write
+    // grabacion + _ + day + time at start
+    //auto start_time = chrono::system_clock::now();
+    //time_t date = chrono::system_clock::to_time_t( start_time );
+    //string file_name = "Gravacion_" + (string)ctime( &date );
+    time_t temp_time = time(NULL);
+    struct tm *date = localtime(&temp_time);
+    string file_name = "Grabacion_" + to_string(date->tm_mday) + "_" + to_string(date->tm_hour) + ":" + to_string(date->tm_min) + ":" + to_string(date->tm_sec) + ".avi";
+    
+    VideoWriter oVideoWriter( file_name, CV_FOURCC('P','I','M','1'), 20, frameSize, true);
 
     // Check if we can write the video feed to the file
     if( !oVideoWriter.isOpened())
