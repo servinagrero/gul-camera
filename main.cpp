@@ -114,30 +114,26 @@ int main() {
 
 void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
 {
+
   // Detect faces
   face_cascade.detectMultiScale( frame, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
   
+  auto static face_nearest = faces[0]; //Stores the nearest face
+
   /*
    * For all the faces that are detected we need the biggest one
    * Clasify all faces but use the nearest one
    */
+
    for( size_t i = 0; i < faces.size(); ++i )                                                                                          
-   {                                                                                                                                   
-     Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);                                           
-     ellipse( *camera_frame, center, Size( faces[i].width*0.5, faces[i].height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 ); 
-                                                                                                                                             
-     Mat faceROI = frame( faces[i] );                                                                                       
-     std::vector<Rect> eyes;                                                                                                     
-                                                                                                                                             
-     //Detect eyes only for the nearest face                                                                                     
-     eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );                                
-                                                                                                                                 
-     for(size_t j = 0; j < eyes.size(); ++j)                                                                                     
+   {
+     if( faces[i].width*0.5 > face_nearest.width*0.5 && faces[i].height*0.5 > face_nearest.height*0.5 )
      {
-             Point center( faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5 );
-             int radius = cvRound( (eyes[j].width+eyes[j].height)*0.25 );
-             circle( *camera_frame, center, radius, Scalar(255, 0, 0), 4, 8, 0 );
+       face_nearest = faces[i];
      }
+
+     Point center( face_nearest.x + face_nearest.width*0.5, face_nearest.y + face_nearest.height*0.5);
+     ellipse( *camera_frame, center, Size( face_nearest.width*0.5, face_nearest.height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
+   }
      
-    }
 }
