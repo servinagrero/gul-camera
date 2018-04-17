@@ -9,9 +9,11 @@
 
 #include "GPIO.h"
 
-using namespace std;
 using namespace cv;
 // Pins capables of PWM are pin 12th and pin 17th
+
+/** Function Definitions**/
+void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame );
 
  /** Global variables */
 String face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
@@ -21,24 +23,25 @@ CascadeClassifier eyes_cascade;
 RNG rng(12345);
 
 int main() {
-    VideoCapture stream1(0); // Access the camera /dev/video0
 
+    VideoCapture stream1(0); // Access the camera /dev/video0
+    
     // Check if the webcam has been initialized
     if (!stream1.isOpened()){
-        cout << "Cannot open camera" << endl;
+            std::cout << "Cannot open camera" << std::endl;
         return -1;
     }
 
     // Load the cascades
     if( !face_cascade.load( face_cascade_name ) )
     {
-      cout << "Could not load face cascade" << endl;
+      std::cout << "Could not load face cascade" << std::endl;
       return -1;
     }
     
     if( !eyes_cascade.load( eyes_cascade_name ) )
     {
-      cout << "Could not load eyes cascade" << endl;
+      std::cout << "Could not load eyes cascade" << std::endl;
       return -1;
     }
 
@@ -46,9 +49,9 @@ int main() {
     // namedWindow("Grabación", CV_WINDOW_AUTOSIZE);
 
     // Dimensions of the video recorging
-    double dWidth = stream1.get(CV_CAP_PROP_FRAME_WIDTH);
-    double dHeight = stream1.get(CV_CAP_PROP_FRAME_HEIGHT);
-    cout << "Frame size: " << dWidth << "x" << dHeight << endl;
+    double dWidth = stream1.get( CV_CAP_PROP_FRAME_WIDTH );
+    double dHeight = stream1.get( CV_CAP_PROP_FRAME_HEIGHT );
+    std::cout << "Frame size: " << dWidth << "x" << dHeight << std::endl;
 
     Size frameSize(static_cast<int>(dWidth), static_cast<int>(dHeight));
 
@@ -57,64 +60,84 @@ int main() {
     //auto start_time = chrono::system_clock::now();
     //time_t date = chrono::system_clock::to_time_t( start_time );
     //string file_name = "Gravacion_" + (string)ctime( &date );
-    time_t temp_time = time(NULL);
-    struct tm *date = localtime(&temp_time);
+    time_t temp_time = time( NULL );
+    struct tm *date = localtime( &temp_time );
     string file_name = "Grabacion_" + to_string(date->tm_mday) + "_" + to_string(date->tm_hour) + ":" + to_string(date->tm_min) + ":" + to_string(date->tm_sec) + ".avi";
-    
-    VideoWriter oVideoWriter( file_name, CV_FOURCC('P','I','M','1'), 20, frameSize, true);
+
+    /*
+     * Create a VideWriter object to write the images into a file
+     * CV_FOURCC is the 4 byte code to select the video codec
+     */
+    VideoWriter oVideoWriter( file_name, CV_FOURCC('P','I','M','1'), 20, frameSize, true );
 
     // Check if we can write the video feed to the file
-    if( !oVideoWriter.isOpened())
+    if( !oVideoWriter.isOpened() )
     {
-        cout << "Failed to write to video" << endl;
+        std::cout << "Failed to write to video" << std::endl;
         return -1;
     }
 
     // Main loop
-    while (true) {
-        /* 
-         * Treats the video feed as a series of images
-         * Each image is handled as a matrix
-         */
-            
+    while ( true ) {
+
+         // Treats the video feed as a series of images
+         // Each image is handled as a matrix
         std::vector<Rect> faces;
         Mat cameraFrame;
         Mat frame_gray;
         
-        stream1.read(cameraFrame); // Reads image from camera
-        oVideoWriter.write(cameraFrame); // Write the image to file
+        stream1.read( cameraFrame ); // Reads image from camera
+        oVideoWriter.write( cameraFrame ); // Write the image to file
 
         cvtColor( cameraFrame, frame_gray, CV_BGR2GRAY );
-        equalizeHist(frame_gray, frame_gray);
+        equalizeHist( frame_gray, frame_gray );
 
-        // Detect faces
-        face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+        detect_faces( frame_gray, faces, &cameraFrame);
+        imshow( "Camera", cameraFrame ); // Shows the image in the window
 
-        for( size_t i = 0; i < faces.size(); ++i)
+        // Wait for the user to press Scape
+        if (waitKey(10) == 27)
         {
-                Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);
-                ellipse( cameraFrame, center, Size( faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
-
-                Mat faceROI = frame_gray( faces[i] );
-                std::vector<Rect> eyes;
-
-                //Detect eyes for each face
-                eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
-                
-                for(size_t j = 0; j < eyes.size(); ++j)
-                {
-                        Point center( faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5 );
-                        int radius = cvRound( (eyes[j].width+eyes[j].height)*0.25 );
-                        circle( cameraFrame, center, radius, Scalar(255, 0, 0), 4, 8, 0 );
-                }
+                stream1.release();
+                destroyAllWindows();
+                break; 
         }
-        
-        imshow("Camera", cameraFrame); // Shows the image in the window
-
-
-        if (waitKey(10) == 27) break; // Wait for the user to press Scape
-
     }
 
-return 0;
+    return 0;
+}
+
+/*
+ * Accecpt the current frame as a parameter
+ * Returns the nearest face in the vision
+ */
+
+void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
+{
+  // Detect faces
+  face_cascade.detectMultiScale( frame, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+  
+  /*
+   * For all the faces that are detected we need the biggest one
+   * Clasify all faces but use the nearest one
+   */
+   for( size_t i = 0; i < faces.size(); ++i )                                                                                          
+   {                                                                                                                                   
+     Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5);                                           
+     ellipse( *camera_frame, center, Size( faces[i].width*0.5, faces[i].height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 ); 
+                                                                                                                                             
+     Mat faceROI = frame( faces[i] );                                                                                       
+     std::vector<Rect> eyes;                                                                                                     
+                                                                                                                                             
+     //Detect eyes only for the nearest face                                                                                     
+     eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );                                
+                                                                                                                                 
+     for(size_t j = 0; j < eyes.size(); ++j)                                                                                     
+     {
+             Point center( faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5 );
+             int radius = cvRound( (eyes[j].width+eyes[j].height)*0.25 );
+             circle( *camera_frame, center, radius, Scalar(255, 0, 0), 4, 8, 0 );
+     }
+     
+    }
 }
