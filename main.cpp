@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <ctime>
-//#include <chrono>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -23,7 +22,7 @@ CascadeClassifier eyes_cascade;
 RNG rng(12345);
 
 int main() {
-
+  
     VideoCapture stream1(0); // Access the camera /dev/video0
     
     // Check if the webcam has been initialized
@@ -57,9 +56,6 @@ int main() {
 
     // Name of the file to write
     // grabacion + _ + day + time at start
-    //auto start_time = chrono::system_clock::now();
-    //time_t date = chrono::system_clock::to_time_t( start_time );
-    //string file_name = "Gravacion_" + (string)ctime( &date );
     time_t temp_time = time( NULL );
     struct tm *date = localtime( &temp_time );
     string file_name = "Grabacion_" + to_string(date->tm_mday) + "_" + to_string(date->tm_hour) + ":" + to_string(date->tm_min) + ":" + to_string(date->tm_sec) + ".avi";
@@ -78,10 +74,10 @@ int main() {
     }
 
     // Main loop
-    while ( true ) {
-
-         // Treats the video feed as a series of images
-         // Each image is handled as a matrix
+    while ( true )
+    {
+        // Treats the video feed as a series of images
+        // Each image is handled as a matrix
         std::vector<Rect> faces;
         Mat cameraFrame;
         Mat frame_gray;
@@ -96,11 +92,11 @@ int main() {
         imshow( "Camera", cameraFrame ); // Shows the image in the window
 
         // Wait for the user to press Scape
-        if (waitKey(10) == 27)
+        if ( waitKey(10) == 27 )
         {
                 stream1.release();
                 destroyAllWindows();
-                break; 
+                break;
         }
     }
 
@@ -117,23 +113,24 @@ void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
 
   // Detect faces
   face_cascade.detectMultiScale( frame, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
-  
-  auto static face_nearest = faces[0]; //Stores the nearest face
+
+  // TODO: Fix problem reseting the face detected
+  cv::Rect face_nearest; //Stores the nearest face
 
   /*
    * For all the faces that are detected we need the biggest one
    * Clasify all faces but use the nearest one
    */
 
-   for( size_t i = 0; i < faces.size(); ++i )                                                                                          
+  for( size_t i = 0; i < faces.size(); ++i )                                                                                          
    {
-     if( faces[i].width*0.5 > face_nearest.width*0.5 && faces[i].height*0.5 > face_nearest.height*0.5 )
+     if( faces[i].width > face_nearest.width && faces[i].height > face_nearest.height && face_nearest != faces[i] )
      {
        face_nearest = faces[i];
      }
-
-     Point center( face_nearest.x + face_nearest.width*0.5, face_nearest.y + face_nearest.height*0.5);
-     ellipse( *camera_frame, center, Size( face_nearest.width*0.5, face_nearest.height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
    }
-     
+
+   Point center( face_nearest.x + face_nearest.width*0.5, face_nearest.y + face_nearest.height*0.5);
+   ellipse( *camera_frame, center, Size( face_nearest.width*0.5, face_nearest.height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
+
 }
