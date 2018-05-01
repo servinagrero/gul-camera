@@ -12,13 +12,11 @@ using namespace cv;
 // Pins capables of PWM are pin 12th and pin 17th
 
 /** Function Definitions**/
-void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame );
+Rect detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame );
 
  /** Global variables */
 String face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
-String eyes_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_eye_tree_eyeglasses.xml";
 CascadeClassifier face_cascade;
-CascadeClassifier eyes_cascade;
 RNG rng(12345);
 
 int main() {
@@ -37,13 +35,6 @@ int main() {
       std::cout << "Could not load face cascade" << std::endl;
       return -1;
     }
-    
-    if( !eyes_cascade.load( eyes_cascade_name ) )
-    {
-      std::cout << "Could not load eyes cascade" << std::endl;
-      return -1;
-    }
-
     // Creates a window for the recording
     // namedWindow("Grabación", CV_WINDOW_AUTOSIZE);
 
@@ -58,7 +49,11 @@ int main() {
     // grabacion + _ + day + time at start
     time_t temp_time = time( NULL );
     struct tm *date = localtime( &temp_time );
-    string file_name = "Grabacion_" + to_string(date->tm_mday) + "_" + to_string(date->tm_hour) + ":" + to_string(date->tm_min) + ":" + to_string(date->tm_sec) + ".avi";
+    std::string file_name = "Grabacion_" +
+      std::to_string(date->tm_mday) + "_" +
+      std::to_string(date->tm_hour) + ":" +
+      std::to_string(date->tm_min) + ":" +
+      std::to_string(date->tm_sec) + ".avi";
 
     /*
      * Create a VideWriter object to write the images into a file
@@ -71,7 +66,9 @@ int main() {
     {
         std::cout << "Failed to write to video" << std::endl;
         return -1;
-    }
+    } 
+
+    Rect face_pos;
 
     // Main loop
     while ( true )
@@ -81,14 +78,21 @@ int main() {
         std::vector<Rect> faces;
         Mat cameraFrame;
         Mat frame_gray;
-        
+     
         stream1.read( cameraFrame ); // Reads image from camera
+
+        if( !stream1.read( cameraFrame ) )
+        {
+            std::cout << "Failed to read frame" << std::endl;
+            return -1;
+        }
+        
         oVideoWriter.write( cameraFrame ); // Write the image to file
 
         cvtColor( cameraFrame, frame_gray, CV_BGR2GRAY );
         equalizeHist( frame_gray, frame_gray );
 
-        detect_faces( frame_gray, faces, &cameraFrame);
+        detect_faces( frame_gray, faces, &cameraFrame );
         imshow( "Camera", cameraFrame ); // Shows the image in the window
 
         // Wait for the user to press Scape
@@ -98,6 +102,7 @@ int main() {
                 destroyAllWindows();
                 break;
         }
+        
     }
 
     return 0;
@@ -105,18 +110,17 @@ int main() {
 
 /*
  * Accecpt the current frame as a parameter
- * Returns the nearest face in the vision
+ * Returns the coordinates of the nearest face in the vision
  */
 
-void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
+cv::Rect detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
 {
 
   // Detect faces
   face_cascade.detectMultiScale( frame, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
 
-  // TODO: Fix problem reseting the face detected
   cv::Rect face_nearest; //Stores the nearest face
-
+  
   /*
    * For all the faces that are detected we need the biggest one
    * Clasify all faces but use the nearest one
@@ -131,6 +135,14 @@ void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
    }
 
    Point center( face_nearest.x + face_nearest.width*0.5, face_nearest.y + face_nearest.height*0.5);
+   //std::cout << "Face at x: " << center.x << " y: " << center.y << std::endl;
+   std::cout << "Face at x:" << face_nearest.x << " y:" << face_nearest.y << std::endl;
    ellipse( *camera_frame, center, Size( face_nearest.width*0.5, face_nearest.height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
 
+   // Calculates the distance from the center of the face to the center of the frame
+   face_nearest.x = (camera_frame->cols) - face_nearest.x;
+   face_nearest.y = (camera_frame->rows) - face_nearest.y ;
+
+   std::cout << "Distance x:" << face_nearest.x << " y:" << face_nearest.y << "\n" << std::endl;
+   return face_nearest;
 }
