@@ -14,7 +14,7 @@
 
 class GPIO
 {
-    public:
+public:
         GPIO(); //  Uses GPIO4 as default pin
         GPIO(int pin);
         ~GPIO();
@@ -26,7 +26,7 @@ class GPIO
         int get_val(); // Get GPIO Value (input/ output pins)
         int get_num(); // return the GPIO number associated with the instance of an object
 
-    private:
+private:
         int gpionum; //Gpio number used for the constructor
 };
 
