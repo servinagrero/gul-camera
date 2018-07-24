@@ -6,14 +6,14 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
-#include <Serial.h>
+// #include <Serial.h>
 
 #include "GPIO.h"
 
 using namespace cv;
 
 // Function Definitions
-Rect detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame );
+void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point* coord );
 
 // Global variables 
 String face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
@@ -25,9 +25,15 @@ int main() {
   
         VideoCapture stream1(0); // Access the camera /dev/video0
     
-        // std::fstream serial_ard;
-        // serial_ard.open("/dev/ttyACM0");
-        Serial serial("COM0");
+        std::fstream serial_ard;
+        serial_ard.open("/dev/ttyACM0", std::ios::out | std::ios::binary );
+
+        if ( !serial_ard.is_open() ) {
+                std::cout << "Cannot connect to arduino" << std::endl;
+                return -1;
+        } 
+
+        // Serial serial("COM0");
 
         // Check if the webcam has been initialized
         if (!stream1.isOpened()){
@@ -107,7 +113,7 @@ int main() {
                 imshow( "Camera", cameraFrame ); // Shows the image in the window
 
                 // Send the data to the arduino
-                serial.write((uint8_t *)&coord, sizeof(coord));
+                // serial.write((uint8_t *)&coord, sizeof(coord));
 
                 // Wait for the user to press Scape
                 if ( waitKey(10) == 27 )
@@ -156,10 +162,10 @@ void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point*
         face_nearest.x = (camera_frame->cols) - face_nearest.x;
         face_nearest.y = (camera_frame->rows) - face_nearest.y ;
 
-        if ( face_nearest.x > face_threshold || face_nearet.y > face_threshold )
+        if ( face_nearest.x > face_threshold || face_nearest.y > face_threshold )
         {
-                coord.x = face_nearest.x;
-                coord.y = face_nearest.y;
+                coord->x = face_nearest.x;
+                coord->y = face_nearest.y;
                 
         }
 
