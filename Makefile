@@ -12,6 +12,7 @@ INSTALL_PREFIX = ./bin
 SRC_PATH = .
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH)
+
 # General compiler flags
 COMPILE_FLAGS = -Wall 
 
@@ -19,7 +20,7 @@ COMPILE_FLAGS = -Wall
 LIBS = $(OPENCV)
 
 all: main.cpp GPIO.cpp $(BUILD_DIR)
-	g++ $(LIBS) main.cpp -o $(BUILD_DIR)/$(BIN_NAME)
+	g++ $(LIBS) $(COMPILE_FLAGS) main.cpp -o $(BUILD_DIR)/$(BIN_NAME)
 
 $(BUILD_DIR):
 	mkdir $(BUILD_DIR)

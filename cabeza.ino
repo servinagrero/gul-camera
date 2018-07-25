@@ -97,8 +97,11 @@ void serialEvent()
         }
 }
 
+// ------------------------------------------ 
+// ---------------- NEW CODE ---------------- 
+// ------------------------------------------ 
 
-#define   BYTE_SIZE   8 // Size of Coordinates
+#define BYTE_SIZE 8 // Size of Coordinates
 char message[BYTE_SIZE];
 
 typedef struct
@@ -116,10 +119,14 @@ void setup() {
 void loop() {
 
         if (Serial.available() >= BYTE_SIZE) {
+                Serial.write(1);
+
                 Serial.readBytes(message , BYTE_SIZE);
                 memcpy(&coord, &message, BYTE_SIZE);
 
-                // mp.width returns 11.1
-                // Success :)
+                // Once finished moving the servos
+                // flush the serial buffer and allow the raspberri to send more data
+                Serial.flush();
+                Serial.write(0);
         }
 }

@@ -10,30 +10,39 @@
 
 #include "GPIO.h"
 
+#define MSG_SIZE sizeof(Coordinates)
+
 using namespace cv;
 
+typedef struct
+{
+        int x;
+        int y;
+} Coordinates;
+
 // Function Definitions
-void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point* coord );
+Coordinates detect_faces( Mat, std::vector<Rect>, Mat* );
 
 // Global variables 
 String face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
 CascadeClassifier face_cascade;
-int face_threshold = 50;
+const int face_threshold = 50; // Minimum number of pixels that the face has to displaced to move the camera
 RNG rng(12345);
 
-int main() {
-  
-        VideoCapture stream1(0); // Access the camera /dev/video0
+int main( int argc, char** argv) {
     
+        String arduino = "/dev/ttyACM0";
         std::fstream serial_ard;
-        serial_ard.open("/dev/ttyACM0", std::ios::out | std::ios::binary );
+        serial_ard.open( arduino, std::ios::out | std::ios::binary );
+
+        char* response_ard = nullptr; // Respone from the aurdino
 
         if ( !serial_ard.is_open() ) {
                 std::cout << "Cannot connect to arduino" << std::endl;
                 return -1;
         } 
 
-        // Serial serial("COM0");
+        VideoCapture stream1(0); // Access the camera /dev/video0
 
         // Check if the webcam has been initialized
         if (!stream1.isOpened()){
@@ -82,8 +91,7 @@ int main() {
         } 
 
         // Stores the coordinates of center of the biggest face
-        // Rect face_pos;
-        Point coord;
+        Coordinates coord;
 
         // Main loop
         while ( true )
@@ -109,17 +117,24 @@ int main() {
                 equalizeHist( frame_gray, frame_gray );
 
                 // Detect the faces on the current frame
-                detect_faces( frame_gray, faces, &cameraFrame, &coord );
+                coord = detect_faces( frame_gray, faces, &cameraFrame);
                 imshow( "Camera", cameraFrame ); // Shows the image in the window
 
-                // Send the data to the arduino
-                // serial.write((uint8_t *)&coord, sizeof(coord));
+                // Send the data to the arduino if the arduino has completed its previous orders
+                // 0 if the arduino can recieve orders, 1 if it cannot
+                serial_ard.read( response_ard, 1);
+
+                if ( *response_ard == '0' ) {
+                        char* msg_to_send = reinterpret_cast<char*>(&coord);
+                        serial_ard.write(&msg_to_send[0], MSG_SIZE);
+                }
 
                 // Wait for the user to press Scape
                 if ( waitKey(10) == 27 )
                 {
                         stream1.release();
                         destroyAllWindows();
+                        serial_ard.close();
                         break;
                 }
         
@@ -133,8 +148,9 @@ int main() {
  * Returns the coordinates of the nearest face in the vision
  */
 
-void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point* coord )
+Coordinates detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
 {
+        Coordinates final_coord; // Position of the largest face
 
         // Detect faces
         face_cascade.detectMultiScale( frame, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
@@ -145,7 +161,6 @@ void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point*
          * For all the faces that are detected we need the biggest one
          * Clasify all faces but use the nearest one
          */
-
         for( size_t i = 0; i < faces.size(); ++i )                                                                                          
         {
                 if( faces[i].width > face_nearest.width && faces[i].height > face_nearest.height && face_nearest != faces[i] )
@@ -155,19 +170,23 @@ void detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame, Point*
         }
 
         Point center( face_nearest.x + face_nearest.width*0.5, face_nearest.y + face_nearest.height*0.5);
-        std::cout << "Face at x:" << face_nearest.x << " y:" << face_nearest.y << std::endl;
+
+        // std::cout << "Face at x:" << face_nearest.x << " y:" << face_nearest.y << std::endl;
+
         ellipse( *camera_frame, center, Size( face_nearest.width*0.5, face_nearest.height*0.5 ), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
 
         // Calculates the distance from the center of the face to the center of the frame
         face_nearest.x = (camera_frame->cols) - face_nearest.x;
         face_nearest.y = (camera_frame->rows) - face_nearest.y ;
 
-        if ( face_nearest.x > face_threshold || face_nearest.y > face_threshold )
+        // if ( face_nearest.x > face_threshold || face_nearest.y > face_threshold )
+        if ( center.x > face_threshold || center.y > face_threshold )
         {
-                coord->x = face_nearest.x;
-                coord->y = face_nearest.y;
-                
+                final_coord.x = face_nearest.x;
+                final_coord.y = face_nearest.y;
         }
 
-        std::cout << "Distance x:" << face_nearest.x << " y:" << face_nearest.y << "\n" << std::endl;
+        return final_coord;
+
+        // std::cout << "Distance x:" << face_nearest.x << " y:" << face_nearest.y << "\n" << std::endl;
 }
