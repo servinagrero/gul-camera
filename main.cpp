@@ -102,18 +102,18 @@ int main( int argc, char** argv) {
                 Mat cameraFrame;
                 Mat frame_gray;
      
-                stream1.read( cameraFrame ); // Reads image from camera
+                stream1.read( &cameraFrame ); // Reads image from camera
 
-                if( !stream1.read( cameraFrame ) )
+                if( !stream1.read( &cameraFrame ) )
                 {
                         std::cout << "Failed to read frame" << std::endl;
                         return -1;
                 }
         
-                oVideoWriter.write( cameraFrame ); // Write the image to file
+                oVideoWriter.write( &cameraFrame ); // Write the image to file
 
                 // Convert the image to gray scale
-                cvtColor( cameraFrame, frame_gray, CV_BGR2GRAY );
+                cvtColor( &cameraFrame, &frame_gray, CV_BGR2GRAY );
                 equalizeHist( frame_gray, frame_gray );
 
                 // Detect the faces on the current frame
