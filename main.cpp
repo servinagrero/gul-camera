@@ -35,12 +35,14 @@ int main( int argc, char** argv) {
         std::fstream serial_ard;
         serial_ard.open( arduino, std::ios::out | std::ios::binary );
 
+        GPIO test(14);
         char* response_ard = nullptr; // Respone from the aurdino
 
         if ( !serial_ard.is_open() ) {
                 std::cout << "Cannot connect to arduino" << std::endl;
                 return -1;
-        } 
+        }
+        
 
         VideoCapture stream1(0); // Access the camera /dev/video0
 
@@ -147,7 +149,6 @@ int main( int argc, char** argv) {
  * Accepts the current frame as a parameter
  * Returns the coordinates of the nearest face in the vision
  */
-
 Coordinates detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame )
 {
         Coordinates final_coord; // Position of the largest face

@@ -1,5 +1,5 @@
 # Compiler used
-CXX ?= g++
+CC = g++
 
 # Variables
 BIN_NAME = faceDetect
@@ -14,17 +14,21 @@ SRC_PATH = .
 INCLUDES = -I $(SRC_PATH)
 
 # General compiler flags
-COMPILE_FLAGS = -Wall 
+COMPILE_FLAGS = -Wall
 
 # Space-separated pkg-config libraries used by this project
 LIBS = $(OPENCV)
 
-all: main.cpp GPIO.cpp $(BUILD_DIR)
-	g++ $(LIBS) $(COMPILE_FLAGS) main.cpp -o $(BUILD_DIR)/$(BIN_NAME)
+all: main.cpp GPIO $(BUILD_DIR)
+	$(CC) $(LIBS) $(COMPILE_FLAGS) main.cpp $(BUILD_DIR)/GPIO.o -o $(BUILD_DIR)/$(BIN_NAME)
+
+GPIO: $(BUILD_DIR) GPIO.cpp
+	$(CC) -c GPIO.cpp -o $(BUILD_DIR)/GPIO.o 
 
 $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
 
 # If a command is passed with @foo it is not redirected to stdout
 clean:
+	rm -f $(BUILD_DIR)/GPIO.o	
 	rm -rf $(BUILD_DIR)

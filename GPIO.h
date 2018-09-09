@@ -15,9 +15,7 @@
 class GPIO
 {
 public:
-        GPIO(); //  Uses GPIO4 as default pin
-        GPIO(int pin);
-        ~GPIO();
+        GPIO(int pin = 4);
   
         int export_gpio(); // Exports GPIO
         int unexport_gpio(); // unexport GPIO
