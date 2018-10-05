@@ -101,8 +101,8 @@ void serialEvent()
 // ---------------- NEW CODE ---------------- 
 // ------------------------------------------ 
 
-#define BYTE_SIZE 8 // Size of Coordinates
-char message[BYTE_SIZE];
+#define MSG_SIZE 8 // Size of Coordinates
+char message[MSG_SIZE];
 
 typedef struct
 {
@@ -114,19 +114,57 @@ Coordinates coord;
 
 void setup() {
         Serial.begin(9600);
+
+        motorH.attach(9);
+        motorV.attach(8);
+        motorH.write(100);
+        motorV.write(85);
+        estadoH = motorH.read();
+        estadoV = motorV.read();
 }
 
 void loop() {
-
-        if (Serial.available() >= BYTE_SIZE) {
-                Serial.write(1);
-
-                Serial.readBytes(message , BYTE_SIZE);
-                memcpy(&coord, &message, BYTE_SIZE);
+        if (Serial.available() >= MSG_SIZE) {
+                Serial.read(message);
+                memcpy(&coord, &message, MSG_SIZE);
 
                 // Once finished moving the servos
                 // flush the serial buffer and allow the raspberri to send more data
+                Serial.write(1);
                 Serial.flush();
-                Serial.write(0);
         }
+
+        // Move the servos according to the message recieved
+        // First move the x axis
+
+        //Move left
+        if ( coord.x < 0 ) {
+                for (int h=estadoH; h<=coord.x; h++){
+                        motorH.write(h);
+                        delay(delayH);
+                }
+        }
+        //Move right
+        else {
+                for (int h=estadoH; h>=coord.x; h--){
+                        motorH.write(h);
+                        delay(delayH);
+                }
+        }
+
+        // Move now the y axis
+        //Move up
+        if ( coord.y < 0 ) {
+                for (int v=estadoV; v<=value; v++){
+                        motorV.write(v);
+                        delay(delayV);
+                }
+                //Move down
+        } else {
+                for (int v=estadoV; v>=value; v--){
+                        motorV.write(v);
+                        delay(delayV);
+                }
+        }
+
 }

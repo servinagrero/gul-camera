@@ -6,9 +6,12 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
-// #include <Serial.h>
+#include <opencv2/core/core.hpp>
 
-#include "GPIO.h"
+#include <qt/QtSerialPort/QSerialPort>
+#include <qt/QtCore/QCoreApplication>
+#include <QStringList>
+#include <QTextStream>
 
 #define MSG_SIZE sizeof(Coordinates)
 
@@ -16,35 +19,37 @@ using namespace cv;
 
 typedef struct
 {
-        int x;
-        int y;
+        float x;
+        float y;
 } Coordinates;
 
 // Function Definitions
 Coordinates detect_faces( Mat, std::vector<Rect>, Mat* );
+char* serialize_msg(  float, float );
 
 // Global variables 
-String face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
+std::string face_cascade_name = "/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml";
 CascadeClassifier face_cascade;
 const int face_threshold = 50; // Minimum number of pixels that the face has to displaced to move the camera
 RNG rng(12345);
 
 int main( int argc, char** argv) {
     
-        String arduino = "/dev/ttyACM0";
-        std::fstream serial_ard;
-        serial_ard.open( arduino, std::ios::out | std::ios::binary );
+        QSerialPort serial;
+        serial.setPortName("ACM0");
+        serial.setBaudRate(QSerialPort::Baud9600);
+        serial.setDataBits(QSerialPort::Data8);
+        serial.setParity(QSerialPort::NoParity);
+        serial.setStopBits(QSerialPort::OneStop);
+        serial.setFlowControl(QSerialPort::NoFlowControl);
+        serial.open(QIODevice::ReadWrite);
 
-        GPIO test(14);
-        char* response_ard = nullptr; // Respone from the aurdino
-
-        if ( !serial_ard.is_open() ) {
-                std::cout << "Cannot connect to arduino" << std::endl;
-                return -1;
-        }
+        // if (!serial.isOpen()) {
+        //         std::cout << "Cannot connect to arduino" << std::endl;
+        //         return -1;
+        // }
         
-
-        VideoCapture stream1(0); // Access the camera /dev/video0
+        cv::VideoCapture stream1("/dev/video0"); // Access the camera /dev/video0
 
         // Check if the webcam has been initialized
         if (!stream1.isOpened()){
@@ -58,9 +63,6 @@ int main( int argc, char** argv) {
                 std::cout << "Could not load face cascade" << std::endl;
                 return -1;
         }
-
-        // Creates a window for the recording
-        // namedWindow("Grabación", CV_WINDOW_AUTOSIZE);
 
         // Dimensions of the video recorging
         double dWidth = stream1.get( CV_CAP_PROP_FRAME_WIDTH );
@@ -83,7 +85,10 @@ int main( int argc, char** argv) {
          * Create a VideWriter object to write the images into a file
          * CV_FOURCC is the 4 byte code to select the video codec
          */
-        VideoWriter oVideoWriter( file_name, CV_FOURCC('P','I','M','1'), 20, frameSize, true );
+        VideoWriter oVideoWriter( file_name, cv::CAP_OPENCV_MJPEG, CV_FOURCC('M','J','P','G'), 30, frameSize, true );
+
+        // Creates a window for the recording
+        // namedWindow("Grabación", CV_WINDOW_AUTOSIZE);
 
         // Check if we can write the video feed to the file
         if( !oVideoWriter.isOpened() )
@@ -94,6 +99,16 @@ int main( int argc, char** argv) {
 
         // Stores the coordinates of center of the biggest face
         Coordinates coord;
+        // QByteArray msg;
+        // msg.resize(2);
+        // msg.setNum(2);
+
+        coord.x = 4.7;
+        coord.y = -5.6;
+        // char* msg;
+
+        // msg = serialize_msg( coord.x, coord.y);
+
 
         // Main loop
         while ( true )
@@ -118,25 +133,19 @@ int main( int argc, char** argv) {
                 cvtColor( cameraFrame, frame_gray, CV_BGR2GRAY );
                 equalizeHist( frame_gray, frame_gray );
 
+
                 // Detect the faces on the current frame
                 coord = detect_faces( frame_gray, faces, &cameraFrame);
+
+
                 imshow( "Camera", cameraFrame ); // Shows the image in the window
-
-                // Send the data to the arduino if the arduino has completed its previous orders
-                // 0 if the arduino can recieve orders, 1 if it cannot
-                serial_ard.read( response_ard, 1);
-
-                if ( *response_ard == '0' ) {
-                        char* msg_to_send = reinterpret_cast<char*>(&coord);
-                        serial_ard.write(&msg_to_send[0], MSG_SIZE);
-                }
 
                 // Wait for the user to press Scape
                 if ( waitKey(10) == 27 )
                 {
                         stream1.release();
+                        serial.close();
                         destroyAllWindows();
-                        serial_ard.close();
                         break;
                 }
         
@@ -190,4 +199,11 @@ Coordinates detect_faces( Mat frame, std::vector<Rect> faces, Mat* camera_frame 
         return final_coord;
 
         // std::cout << "Distance x:" << face_nearest.x << " y:" << face_nearest.y << "\n" << std::endl;
+}
+
+char* serialize_msg(  float coord_x, float coord_y ) {
+        char* buffer = new char[21];
+        sprintf( buffer, "%f", coord_x );
+        sprintf( buffer + sizeof(coord_y), "%f", coord_y );
+        return buffer;
 }
