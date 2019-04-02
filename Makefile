@@ -1,5 +1,8 @@
 # Compiler used
-CC = g++
+CC       = g++
+CFLAGS  += -pedantic -Wall -Wextra -g -fPIC
+LDFLAGS ?=
+LDLIBS   = $(LDFLAGS)
 
 # Variables
 BIN_NAME = faceDetect
@@ -16,11 +19,8 @@ SRC_PATH = .
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH)
 
-# General compiler flags
-COMPILE_FLAGS = -Wall -fPIC
-
 # Space-separated pkg-config libraries used by this project
-LIBS = $(OPENCV) $(QT5) $(GST)
+LIBS = $(OPENCV) $(QT5) $(GST) -fPIC
 
 all: main.cpp $(BUILD_DIR)
 	$(CC) $(LIBS) $(COMPILE_FLAGS) -g main.cpp -o $(BUILD_DIR)/$(BIN_NAME)
@@ -33,5 +33,5 @@ $(BUILD_DIR):
 
 # If a command is passed with @foo it is not redirected to stdout
 clean:
-	rm -f $(BUILD_DIR)/Serial.o	
+	rm -f $(BUILD_DIR)/Serial.o
 	rm -rf $(BUILD_DIR)
